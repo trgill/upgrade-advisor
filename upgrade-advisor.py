@@ -14,6 +14,7 @@ from compatibility_checker import CompatibilityChecker
 from backup_advisor import BackupAdvisor
 from upgrade_executor import UpgradeExecutor
 from ai_assistant import UpgradeAssistant
+from rollback_manager import RollbackManager
 
 console = Console()
 
@@ -189,9 +190,15 @@ def upgrade(dry_run):
     if result['success']:
         console.print(f"\n[bold green]Upgrade {result['phase']} successful![/bold green]")
         console.print(result['message'])
+        if result.get('rollback_point'):
+            console.print(f"\n[cyan]Rollback point available:[/cyan] {result['rollback_point']}")
+            console.print(f"[cyan]To rollback if needed:[/cyan] ./upgrade-advisor.py rollback {result['rollback_point']}")
     else:
         console.print(f"\n[bold red]Upgrade {result['phase']} failed[/bold red]")
         console.print(result['message'])
+        if result.get('rollback_point'):
+            console.print(f"\n[yellow]Rollback point available:[/yellow] {result['rollback_point']}")
+            console.print(f"[yellow]To rollback:[/yellow] ./upgrade-advisor.py rollback {result['rollback_point']}")
         if 'output' in result:
             console.print("\nDetails:")
             console.print(result['output'])
@@ -262,6 +269,120 @@ def assistant(export):
     if export:
         ai.export_conversation(export)
         console.print(f"\n[green]Conversation exported to {export}[/green]")
+
+
+@cli.command()
+def list_rollbacks():
+    """List available rollback points."""
+    console.print("[bold blue]Available Rollback Points[/bold blue]\n")
+
+    rollback_caps = SystemDetector.check_rollback_capabilities()
+
+    console.print(f"[bold]Rollback Capabilities:[/bold]")
+    for method in rollback_caps.get('methods', []):
+        console.print(f"  ✓ {method}")
+
+    if not rollback_caps.get('methods'):
+        console.print("  [yellow]No automatic rollback methods available[/yellow]")
+        console.print("  [dim]Install boom-boot or snapm for automatic rollback support[/dim]")
+        return
+
+    rollback_points = RollbackManager.list_rollback_points()
+
+    if not rollback_points:
+        console.print("\n[yellow]No rollback points created yet[/yellow]")
+        console.print("[dim]Rollback points are created automatically before upgrades[/dim]")
+        return
+
+    console.print(f"\n[bold]Saved Rollback Points:[/bold]")
+    table = Table()
+    table.add_column("ID", style="cyan")
+    table.add_column("Method", style="magenta")
+    table.add_column("Created", style="green")
+    table.add_column("Description")
+
+    for rp in rollback_points:
+        table.add_row(
+            rp.identifier,
+            rp.method,
+            rp.timestamp[:19],
+            rp.description
+        )
+
+    console.print(table)
+    console.print(f"\n[dim]To rollback: ./upgrade-advisor.py rollback <ID>[/dim]")
+
+
+@cli.command()
+@click.argument('identifier')
+@click.confirmation_option(prompt='This will rollback your system. Continue?')
+def rollback(identifier):
+    """Rollback to a previous snapshot."""
+    console.print(f"[bold blue]Rolling back to: {identifier}[/bold blue]\n")
+
+    try:
+        rollback_points = RollbackManager.list_rollback_points()
+        target = next((rp for rp in rollback_points if rp.identifier == identifier), None)
+
+        if not target:
+            console.print(f"[bold red]Rollback point '{identifier}' not found[/bold red]")
+            console.print("\nAvailable rollback points:")
+            for rp in rollback_points:
+                console.print(f"  - {rp.identifier} ({rp.method})")
+            sys.exit(1)
+
+        console.print(f"[bold]Method:[/bold] {target.method}")
+        console.print(f"[bold]Created:[/bold] {target.timestamp}")
+        console.print(f"[bold]Description:[/bold] {target.description}\n")
+
+        with console.status("[bold yellow]Initiating rollback..."):
+            success = RollbackManager.execute_rollback(identifier)
+
+        if success:
+            console.print("\n[bold green]Rollback initiated successfully![/bold green]")
+            console.print("[yellow]System may reboot to complete rollback[/yellow]")
+        else:
+            console.print("\n[bold yellow]Manual intervention required[/bold yellow]")
+            console.print("See instructions above")
+
+    except Exception as e:
+        console.print(f"\n[bold red]Rollback failed:[/bold red] {e}")
+        sys.exit(1)
+
+
+@cli.command()
+@click.option('--method', type=click.Choice(['auto', 'snapm', 'boom', 'lvm', 'btrfs']),
+              default='auto', help='Rollback method to use')
+def create_snapshot(method):
+    """Create a manual system snapshot for rollback."""
+    console.print("[bold blue]Creating System Snapshot[/bold blue]\n")
+
+    prereqs = SystemDetector.check_prerequisites()
+    if not prereqs.get('has_root'):
+        console.print("[bold red]Root privileges required to create snapshots[/bold red]")
+        sys.exit(1)
+
+    try:
+        with console.status(f"[bold green]Creating snapshot using {method}..."):
+            rollback_point = RollbackManager.create_pre_upgrade_snapshot(
+                method=method,
+                description=f"Manual snapshot created via upgrade-advisor"
+            )
+
+        console.print(f"[bold green]✓ Snapshot created successfully![/bold green]")
+        console.print(f"\n[bold]Details:[/bold]")
+        console.print(f"  ID: {rollback_point.identifier}")
+        console.print(f"  Method: {rollback_point.method}")
+        console.print(f"  Timestamp: {rollback_point.timestamp}")
+        console.print(f"\n[cyan]To rollback:[/cyan] ./upgrade-advisor.py rollback {rollback_point.identifier}")
+
+    except Exception as e:
+        console.print(f"\n[bold red]Snapshot creation failed:[/bold red] {e}")
+        console.print("\n[yellow]Troubleshooting:[/yellow]")
+        console.print("  - Ensure boom-boot or snapm is installed")
+        console.print("  - Check available disk space for snapshots")
+        console.print("  - Verify LVM/Btrfs configuration if using those methods")
+        sys.exit(1)
 
 
 if __name__ == '__main__':

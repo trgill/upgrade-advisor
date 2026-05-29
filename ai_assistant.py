@@ -44,6 +44,7 @@ class UpgradeAssistant:
             warnings = [c for c in checks if c.severity == 'warning' and not c.passed]
 
             backup_recs = BackupAdvisor.get_recommendations(system)
+            rollback_caps = SystemDetector.check_rollback_capabilities()
 
             self.system_context = {
                 'system': {
@@ -56,6 +57,14 @@ class UpgradeAssistant:
                     'kernel': system.kernel,
                 },
                 'prerequisites': prereqs,
+                'rollback_capabilities': {
+                    'boom_available': rollback_caps.get('boom_available', False),
+                    'snapm_available': rollback_caps.get('snapm_available', False),
+                    'lvm_snapshots': rollback_caps.get('lvm_snapshots', False),
+                    'btrfs_snapshots': rollback_caps.get('btrfs_snapshots', False),
+                    'methods': rollback_caps.get('methods', []),
+                    'recommended_method': rollback_caps['methods'][0] if rollback_caps.get('methods') else None
+                },
                 'upgrade_path': {
                     'available': recommended_path is not None,
                     'from': recommended_path.from_version if recommended_path else None,
@@ -113,7 +122,17 @@ When discussing upgrades:
 - Explain what will happen during the upgrade process
 - Set realistic expectations about downtime and complexity
 
-Remember: You're a helpful guide, not just a command executor. Build trust and ensure the user feels confident."""
+IMPORTANT - Rollback and Safety:
+- The tool automatically creates rollback points before upgrades using boom-boot or snapm
+- Boom-boot: Creates bootable snapshots - allows booting back to pre-upgrade state
+- Snapm: Advanced snapshot manager for LVM/Btrfs - provides atomic rollback
+- If available, STRONGLY recommend using these automatic rollback features
+- Explain that rollback is a "safety net" - if upgrade fails, they can boot back to working state
+- This is the #1 way to reduce upgrade anxiety and risk
+- Commands: 'list-rollbacks' to see snapshots, 'rollback <ID>' to restore
+- Snapshots should be created BEFORE starting upgrade, automatically handled by tool
+
+Remember: You're a helpful guide, not just a command executor. Build trust and ensure the user feels confident. The rollback capability is a game-changer for safe upgrades - emphasize this!
 
     def chat(self, user_message: str) -> str:
         """Send a message and get AI response."""

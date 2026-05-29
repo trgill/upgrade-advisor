@@ -9,12 +9,16 @@ A CLI tool for Linux system administrators to analyze and execute OS upgrades fo
 - **Compatibility Checks**: Identifies potential blockers and issues
 - **Backup Recommendations**: Advises on pre-upgrade backup strategies
 - **Automatic Tool Selection**: Uses Leapp for RHEL/CentOS, Ansible for Fedora
+- **⚡ Automatic Rollback**: Creates snapshots with boom-boot/snapm for safe bailout
 - **🤖 AI Assistant**: Interactive AI guide powered by Claude that helps you through upgrades
 
 ## Installation
 
 ```bash
 pip install -r requirements.txt
+
+# Optional but HIGHLY RECOMMENDED for rollback capability
+dnf install boom-boot snapm
 ```
 
 ### AI Assistant Setup (Optional)
@@ -47,7 +51,12 @@ python upgrade-advisor.py generate-backup-script
 
 # Execute upgrade (with confirmation)
 python upgrade-advisor.py upgrade --dry-run  # Preview first
-python upgrade-advisor.py upgrade            # Actual upgrade
+python upgrade-advisor.py upgrade            # Actual upgrade (auto-creates rollback point)
+
+# Rollback management
+python upgrade-advisor.py create-snapshot    # Manual snapshot creation
+python upgrade-advisor.py list-rollbacks     # Show available rollback points
+python upgrade-advisor.py rollback <ID>      # Restore to snapshot
 ```
 
 ### AI Assistant Mode
@@ -91,14 +100,22 @@ Assistant: I understand your concern—RHEL 8 to 9 is a significant upgrade. Let
 **For RHEL/CentOS (Leapp)**:
 - In-place upgrade utility maintained by Red Hat
 - Performs pre-upgrade analysis
-- Upgrades system with rollback capability
+- Automatic rollback point creation
 - Handles RHEL 7→8 and 8→9 transitions
 
 **For Fedora (Ansible + DNF)**:
 - Uses DNF system-upgrade plugin
 - Automated via Ansible playbooks
+- Automatic rollback point creation
 - Downloads new version packages
 - Upgrades on reboot
+
+**Rollback & Safety (boom-boot / snapm)**:
+- **boom-boot**: Creates bootable rollback points in GRUB
+- **snapm**: Atomic filesystem snapshots for instant rollback
+- **Automatic**: Snapshot created before every upgrade
+- **One-command rollback**: `./upgrade-advisor.py rollback <ID>`
+- Works with LVM and Btrfs filesystems
 
 ### AI Assistant Architecture
 
@@ -117,10 +134,12 @@ upgrade-advisor/
 ├── upgrade_paths.py            # Upgrade path logic
 ├── compatibility_checker.py    # Pre-flight checks
 ├── backup_advisor.py           # Backup recommendations
-├── upgrade_executor.py         # Leapp/Ansible execution
+├── upgrade_executor.py         # Leapp/Ansible execution  
+├── rollback_manager.py         # Boom/snapm rollback integration
 ├── ai_assistant.py            # AI-powered guide (Claude integration)
 ├── requirements.txt            # Python dependencies
-└── .env.example               # Configuration template
+├── .env.example               # Configuration template
+└── ROLLBACK.md                # Rollback documentation
 ```
 
 ## Development
@@ -142,12 +161,14 @@ pytest
 
 ## Safety Features
 
+- ✅ **Automatic Rollback Points**: boom-boot/snapm snapshots before upgrades
+- ✅ **One-Command Bailout**: Instant rollback if upgrade fails
 - ✅ Dry-run mode for all operations
 - ✅ Pre-upgrade compatibility checks
 - ✅ Backup script generation
 - ✅ Confirmation prompts for destructive actions
 - ✅ Detailed logging and error messages
-- ✅ AI assistant explains risks before proceeding
+- ✅ AI assistant explains risks and rollback options
 
 ## Limitations
 

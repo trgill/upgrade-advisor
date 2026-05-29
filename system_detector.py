@@ -81,9 +81,80 @@ class SystemDetector:
         checks['has_leapp'] = os.path.exists('/usr/bin/leapp')
         checks['has_ansible'] = os.path.exists('/usr/bin/ansible') or \
                                 os.path.exists('/usr/local/bin/ansible')
+        checks['has_boom'] = os.path.exists('/usr/bin/boom')
+        checks['has_snapm'] = os.path.exists('/usr/bin/snapm')
         checks['has_internet'] = SystemDetector._check_internet()
 
         return checks
+
+    @staticmethod
+    def check_rollback_capabilities() -> dict[str, any]:
+        """Check what rollback mechanisms are available."""
+        capabilities = {
+            'boom_available': False,
+            'snapm_available': False,
+            'lvm_snapshots': False,
+            'btrfs_snapshots': False,
+            'methods': []
+        }
+
+        if os.path.exists('/usr/bin/boom'):
+            try:
+                result = subprocess.run(
+                    ['boom', 'list'],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    timeout=5,
+                    text=True
+                )
+                capabilities['boom_available'] = result.returncode == 0
+                if capabilities['boom_available']:
+                    capabilities['methods'].append('boom-boot')
+            except Exception:
+                pass
+
+        if os.path.exists('/usr/bin/snapm'):
+            try:
+                result = subprocess.run(
+                    ['snapm', 'list'],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    timeout=5,
+                    text=True
+                )
+                capabilities['snapm_available'] = result.returncode == 0
+                if capabilities['snapm_available']:
+                    capabilities['methods'].append('snapm')
+            except Exception:
+                pass
+
+        try:
+            result = subprocess.run(
+                ['lvs', '--noheadings'],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=5
+            )
+            capabilities['lvm_snapshots'] = result.returncode == 0
+            if capabilities['lvm_snapshots'] and 'snapm' not in capabilities['methods']:
+                capabilities['methods'].append('lvm-manual')
+        except Exception:
+            pass
+
+        try:
+            result = subprocess.run(
+                ['btrfs', 'filesystem', 'show'],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=5
+            )
+            capabilities['btrfs_snapshots'] = result.returncode == 0
+            if capabilities['btrfs_snapshots']:
+                capabilities['methods'].append('btrfs')
+        except Exception:
+            pass
+
+        return capabilities
 
     @staticmethod
     def _check_internet() -> bool:

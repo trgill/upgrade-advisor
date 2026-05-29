@@ -2,7 +2,8 @@
 
 from dataclasses import dataclass
 from typing import List
-from system_detector import SystemInfo
+import os
+from system_detector import SystemInfo, SystemDetector
 
 
 @dataclass
@@ -38,6 +39,25 @@ class BackupAdvisor:
         """Generate backup recommendations for the system."""
         recommendations = []
 
+        rollback_caps = SystemDetector.check_rollback_capabilities()
+
+        if rollback_caps['snapm_available']:
+            recommendations.append(BackupRecommendation(
+                priority='critical',
+                target='System snapshot (snapm)',
+                method='snapm create --name pre-upgrade',
+                reason='Atomic filesystem snapshot for instant rollback - RECOMMENDED',
+                estimated_size='Uses CoW - minimal initial space'
+            ))
+        elif rollback_caps['boom_available']:
+            recommendations.append(BackupRecommendation(
+                priority='critical',
+                target='Boot entry (boom-boot)',
+                method='boom create --title "Pre-upgrade"',
+                reason='Creates bootable rollback point - allows booting previous kernel/config',
+                estimated_size='< 1 MB (metadata only)'
+            ))
+
         recommendations.append(BackupRecommendation(
             priority='critical',
             target='Package list',
@@ -70,14 +90,23 @@ class BackupAdvisor:
             estimated_size='100 MB - 1 GB'
         ))
 
-        if system.is_rhel_based:
-            recommendations.append(BackupRecommendation(
-                priority='recommended',
-                target='System snapshot (LVM)',
-                method='lvcreate -L 10G -s -n root_snapshot /dev/mapper/rhel-root',
-                reason='Allows quick rollback via LVM snapshot',
-                estimated_size='10 GB (grows with changes)'
-            ))
+        if system.is_rhel_based and not rollback_caps['snapm_available']:
+            if rollback_caps['lvm_snapshots']:
+                recommendations.append(BackupRecommendation(
+                    priority='recommended',
+                    target='System snapshot (LVM - manual)',
+                    method='lvcreate -L 10G -s -n root_snapshot /dev/mapper/rhel-root',
+                    reason='LVM snapshot for rollback (consider using snapm for easier management)',
+                    estimated_size='10 GB (grows with changes)'
+                ))
+            if rollback_caps['btrfs_snapshots']:
+                recommendations.append(BackupRecommendation(
+                    priority='recommended',
+                    target='System snapshot (Btrfs)',
+                    method='btrfs subvolume snapshot / /.snapshots/pre-upgrade',
+                    reason='Btrfs snapshot for rollback',
+                    estimated_size='CoW - minimal initial space'
+                ))
 
         recommendations.append(BackupRecommendation(
             priority='recommended',

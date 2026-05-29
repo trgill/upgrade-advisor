@@ -3,16 +3,19 @@
 import subprocess
 import os
 from typing import Optional
-from system_detector import SystemInfo
+from system_detector import SystemInfo, SystemDetector
 from upgrade_paths import UpgradePath
+from rollback_manager import RollbackManager
 
 
 class UpgradeExecutor:
     """Executes upgrades using Leapp or Ansible."""
 
-    def __init__(self, system: SystemInfo, upgrade_path: UpgradePath):
+    def __init__(self, system: SystemInfo, upgrade_path: UpgradePath, create_rollback: bool = True):
         self.system = system
         self.upgrade_path = upgrade_path
+        self.create_rollback = create_rollback
+        self.rollback_point = None
 
     def prepare_upgrade(self) -> dict:
         """Prepare the system for upgrade."""
@@ -64,7 +67,23 @@ class UpgradeExecutor:
     def execute_leapp_upgrade(self, auto_reboot: bool = False) -> dict:
         """Execute RHEL upgrade via Leapp."""
         try:
-            print("Running Leapp pre-upgrade assessment...")
+            if self.create_rollback:
+                print("\n⚡ Creating pre-upgrade rollback point...")
+                try:
+                    rollback_caps = SystemDetector.check_rollback_capabilities()
+                    if rollback_caps['boom_available'] or rollback_caps['snapm_available']:
+                        self.rollback_point = RollbackManager.create_pre_upgrade_snapshot(
+                            description=f"Pre-upgrade snapshot before {self.system.os_name} {self.upgrade_path.from_version} → {self.upgrade_path.to_version}"
+                        )
+                        print(f"✓ Rollback point created: {self.rollback_point.identifier} ({self.rollback_point.method})")
+                    else:
+                        print("⚠ No automatic rollback tools available (boom/snapm)")
+                        print("  Consider creating manual LVM snapshot if needed")
+                except Exception as e:
+                    print(f"⚠ Warning: Could not create rollback point: {e}")
+                    print("  Continuing without automatic rollback capability")
+
+            print("\nRunning Leapp pre-upgrade assessment...")
             preupgrade_result = subprocess.run(
                 ['leapp', 'preupgrade'],
                 capture_output=True,
@@ -76,7 +95,8 @@ class UpgradeExecutor:
                     'success': False,
                     'phase': 'preupgrade',
                     'message': 'Pre-upgrade check failed',
-                    'output': preupgrade_result.stdout + preupgrade_result.stderr
+                    'output': preupgrade_result.stdout + preupgrade_result.stderr,
+                    'rollback_point': self.rollback_point.identifier if self.rollback_point else None
                 }
 
             print("Pre-upgrade check passed. Review /var/log/leapp/leapp-report.txt")
@@ -96,7 +116,8 @@ class UpgradeExecutor:
                 'success': upgrade_result.returncode == 0,
                 'phase': 'upgrade',
                 'message': 'Upgrade initiated - system will reboot',
-                'output': upgrade_result.stdout
+                'output': upgrade_result.stdout,
+                'rollback_point': self.rollback_point.identifier if self.rollback_point else None
             }
 
         except FileNotFoundError:
@@ -114,10 +135,24 @@ class UpgradeExecutor:
 
     def execute_ansible_upgrade(self) -> dict:
         """Execute Fedora upgrade via Ansible playbook."""
+        if self.create_rollback:
+            print("\n⚡ Creating pre-upgrade rollback point...")
+            try:
+                rollback_caps = SystemDetector.check_rollback_capabilities()
+                if rollback_caps['boom_available'] or rollback_caps['snapm_available']:
+                    self.rollback_point = RollbackManager.create_pre_upgrade_snapshot(
+                        description=f"Pre-upgrade snapshot before Fedora {self.upgrade_path.from_version} → {self.upgrade_path.to_version}"
+                    )
+                    print(f"✓ Rollback point created: {self.rollback_point.identifier} ({self.rollback_point.method})")
+                else:
+                    print("⚠ No automatic rollback tools available (boom/snapm)")
+            except Exception as e:
+                print(f"⚠ Warning: Could not create rollback point: {e}")
+
         playbook_path = self._generate_fedora_playbook()
 
         try:
-            print(f"Generated Ansible playbook: {playbook_path}")
+            print(f"\nGenerated Ansible playbook: {playbook_path}")
             print("Executing upgrade playbook...")
 
             result = subprocess.run(
@@ -131,7 +166,8 @@ class UpgradeExecutor:
                 'phase': 'upgrade',
                 'message': 'Ansible playbook executed',
                 'output': result.stdout,
-                'playbook': playbook_path
+                'playbook': playbook_path,
+                'rollback_point': self.rollback_point.identifier if self.rollback_point else None
             }
 
         except FileNotFoundError:
