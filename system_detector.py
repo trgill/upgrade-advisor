@@ -1,3 +1,6 @@
+# Copyright Red Hat
+# SPDX-License-Identifier: Apache-2.0
+
 """System detection module for identifying OS version and configuration."""
 
 import os

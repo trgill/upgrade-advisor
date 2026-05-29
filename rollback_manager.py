@@ -1,3 +1,6 @@
+# Copyright Red Hat
+# SPDX-License-Identifier: Apache-2.0
+
 """Rollback management using boom-boot and snapm for safe bailout."""
 
 import subprocess

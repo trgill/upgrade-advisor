@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright Red Hat
+# SPDX-License-Identifier: Apache-2.0
+
 """Linux Upgrade Advisor CLI - Main entry point."""
 
 import sys

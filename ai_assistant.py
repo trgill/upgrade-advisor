@@ -1,3 +1,6 @@
+# Copyright Red Hat
+# SPDX-License-Identifier: Apache-2.0
+
 """AI-powered assistant for guiding users through upgrades."""
 
 import os
