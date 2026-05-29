@@ -1,8 +1,27 @@
 # Rollback and Bail-Out Features
 
+## ⚠️ **EXPERIMENTAL FEATURE WARNING** ⚠️
+
+**Rollback features are UNTESTED and may FAIL when you need them most.**
+
+- Snapshots may be corrupted
+- Rollback may not restore your system
+- May cause additional data loss
+- May leave system unbootable
+
+**NEVER rely on these rollback features as your only safety net.**
+
+**ALWAYS maintain external backups** before attempting any upgrade.
+
+See [README.md](README.md) and [WARNING.md](WARNING.md) for full warnings.
+
+---
+
 ## Overview
 
-The Linux Upgrade Advisor includes comprehensive rollback capabilities using **boom-boot** and **snapm** to provide a safe "bail-out" option if upgrades fail or cause issues.
+The Linux Upgrade Advisor includes comprehensive rollback capabilities using **boom-boot** and **snapm** to provide a "bail-out" option if upgrades fail or cause issues.
+
+**NOTE**: These rollback features are experimental and untested. Do not rely on them.
 
 ## Why Rollback Matters
 

@@ -1,5 +1,12 @@
 # Linux Upgrade Advisor - Project Summary
 
+## ⚠️ **EXPERIMENTAL SOFTWARE - NOT FOR PRODUCTION USE** ⚠️
+
+This is untested prototype software that may cause complete data loss.
+See [README.md](README.md) for full warnings before proceeding.
+
+---
+
 ## Overview
 
 A Python CLI tool that helps Linux system administrators safely upgrade Fedora and RHEL systems, featuring an **AI-powered assistant** that provides conversational guidance through the upgrade process.

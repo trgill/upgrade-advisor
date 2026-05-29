@@ -1,5 +1,24 @@
 # Quick Start Guide
 
+## ⚠️ **EXPERIMENTAL SOFTWARE - READ THIS FIRST** ⚠️
+
+**THIS IS UNTESTED PROTOTYPE SOFTWARE**
+
+**DO NOT USE ON PRODUCTION SYSTEMS OR WITH DATA YOU CANNOT AFFORD TO LOSE**
+
+This tool may cause:
+- Complete data loss
+- System corruption
+- Unbootable systems
+- Failed upgrades
+
+**ALWAYS** have verified external backups before using this tool.
+The authors provide **NO WARRANTY** and **NO LIABILITY**.
+
+See [README.md](README.md) for full warnings.
+
+---
+
 ## Installation
 
 ```bash

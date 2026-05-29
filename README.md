@@ -2,6 +2,34 @@
 
 A CLI tool for Linux system administrators to analyze and execute OS upgrades for Fedora and RHEL systems, with an AI-powered assistant to guide you through the process.
 
+---
+
+## ⚠️ **EXPERIMENTAL SOFTWARE - USE AT YOUR OWN RISK** ⚠️
+
+**THIS IS UNTESTED PROTOTYPE SOFTWARE. DO NOT USE ON PRODUCTION SYSTEMS.**
+
+**WARNING**: This software is experimental and has NOT been tested in production environments. Using this tool may result in:
+- **Complete data loss**
+- **System corruption**
+- **Unbootable systems**
+- **Failed upgrades requiring full reinstallation**
+- **Loss of critical business data**
+
+**CRITICAL SAFETY REQUIREMENTS**:
+1. ✅ **BACKUP ALL DATA** to external storage before use
+2. ✅ Test ONLY on non-production systems first
+3. ✅ Verify backups are restorable before proceeding
+4. ✅ Have recovery media and reinstallation plan ready
+5. ✅ Assume rollback features may fail
+6. ⛔ **NEVER use on production without extensive testing**
+7. ⛔ **NEVER trust rollback as your only safety net**
+
+The authors provide **NO WARRANTY** and accept **NO LIABILITY** for any damage, data loss, or issues caused by this software. By using this tool, you accept full responsibility for any consequences.
+
+**For production use**: Use official vendor tools (Leapp for RHEL, dnf system-upgrade for Fedora) with proper testing and change management procedures.
+
+---
+
 ## Features
 
 - **System Detection**: Automatically detects current OS version and configuration

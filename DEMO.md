@@ -1,5 +1,13 @@
 # AI Assistant Demo
 
+## ⚠️ **EXPERIMENTAL SOFTWARE WARNING** ⚠️
+
+**This is untested prototype software. May cause complete data loss.**
+
+DO NOT use on production systems. See [README.md](README.md) for full warnings.
+
+---
+
 ## Quick Start
 
 ```bash

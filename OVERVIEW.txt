@@ -1,6 +1,9 @@
 ╔══════════════════════════════════════════════════════════════════════╗
 ║                    LINUX UPGRADE ADVISOR                             ║
-║                          v0.1.0                                      ║
+║                    v0.1.0-EXPERIMENTAL                               ║
+║                                                                      ║
+║          ⚠️  UNTESTED PROTOTYPE - MAY CAUSE DATA LOSS ⚠️            ║
+║                   READ WARNING.md BEFORE USE                         ║
 ╚══════════════════════════════════════════════════════════════════════╝
 
 📦 PROJECT STATS

@@ -20,9 +20,16 @@ console = Console()
 
 
 @click.group()
-@click.version_option(version='0.1.0')
+@click.version_option(version='0.1.0-EXPERIMENTAL')
 def cli():
-    """Linux Upgrade Advisor - Analyze and execute OS upgrades for Fedora and RHEL."""
+    """Linux Upgrade Advisor - Analyze and execute OS upgrades for Fedora and RHEL.
+
+    ⚠️  EXPERIMENTAL SOFTWARE - USE AT YOUR OWN RISK ⚠️
+
+    This is untested prototype software. May cause complete data loss.
+    ALWAYS backup data before use. Test on non-production systems only.
+    Authors provide NO WARRANTY. See README.md for full warnings.
+    """
     pass
 
 
@@ -149,9 +156,27 @@ def generate_backup_script(priority):
 
 @cli.command()
 @click.option('--dry-run', is_flag=True, help='Show what would be done without executing')
-@click.confirmation_option(prompt='This will upgrade your system. Continue?')
-def upgrade(dry_run):
-    """Execute the system upgrade."""
+@click.option('--i-accept-the-risks', is_flag=True, help='Acknowledge experimental software risks')
+def upgrade(dry_run, i_accept_the_risks):
+    """Execute the system upgrade.
+
+    ⚠️  EXPERIMENTAL - May cause complete data loss!
+    """
+    if not dry_run and not i_accept_the_risks:
+        console.print("\n[bold red]⚠️  EXPERIMENTAL SOFTWARE WARNING ⚠️[/bold red]\n")
+        console.print("[yellow]This is UNTESTED prototype software that may cause:[/yellow]")
+        console.print("  • Complete data loss")
+        console.print("  • System corruption")
+        console.print("  • Unbootable system")
+        console.print("  • Failed upgrades requiring reinstallation\n")
+        console.print("[bold red]REQUIRED before proceeding:[/bold red]")
+        console.print("  ✓ Backup ALL data to external storage")
+        console.print("  ✓ Verify backups are restorable")
+        console.print("  ✓ Have recovery plan ready")
+        console.print("  ✓ Test on non-production system first\n")
+        console.print("[dim]To proceed, add flag: --i-accept-the-risks[/dim]\n")
+        sys.exit(1)
+
     system = SystemDetector.detect()
     paths = UpgradePathFinder.find_paths(system)
     recommended_path = UpgradePathFinder.recommend_best_path(paths)
@@ -162,6 +187,14 @@ def upgrade(dry_run):
 
     console.print(f"[bold]Upgrade Plan:[/bold] {system.os_name} {recommended_path.from_version} → {recommended_path.to_version}")
     console.print(f"[bold]Method:[/bold] {recommended_path.method}")
+
+    if not dry_run:
+        console.print("\n[bold yellow]⚠️  You are using experimental software[/bold yellow]")
+        console.print("[yellow]Rollback features are untested and may fail[/yellow]")
+
+        if not click.confirm('\nDo you have verified backups and accept all risks?', default=False):
+            console.print("\n[green]Wise choice. Backup your data first.[/green]")
+            sys.exit(0)
 
     if dry_run:
         console.print("\n[bold yellow]DRY RUN - No changes will be made[/bold yellow]")
@@ -315,10 +348,28 @@ def list_rollbacks():
 
 @cli.command()
 @click.argument('identifier')
-@click.confirmation_option(prompt='This will rollback your system. Continue?')
-def rollback(identifier):
-    """Rollback to a previous snapshot."""
-    console.print(f"[bold blue]Rolling back to: {identifier}[/bold blue]\n")
+@click.option('--i-accept-the-risks', is_flag=True, help='Acknowledge experimental software risks')
+def rollback(identifier, i_accept_the_risks):
+    """Rollback to a previous snapshot.
+
+    ⚠️  EXPERIMENTAL - Rollback may fail and cause data loss!
+    """
+    if not i_accept_the_risks:
+        console.print("\n[bold red]⚠️  EXPERIMENTAL ROLLBACK WARNING ⚠️[/bold red]\n")
+        console.print("[yellow]Rollback features are UNTESTED and may:[/yellow]")
+        console.print("  • Fail to restore your system")
+        console.print("  • Cause additional data loss")
+        console.print("  • Leave system in unbootable state")
+        console.print("  • Corrupt existing snapshots\n")
+        console.print("[bold]Only use if you have external backups![/bold]\n")
+        console.print("[dim]To proceed, add flag: --i-accept-the-risks[/dim]\n")
+        sys.exit(1)
+
+    if not click.confirm('Do you have verified external backups and accept all risks?', default=False):
+        console.print("\n[green]Recommended. Ensure you have external backups before rollback.[/green]")
+        sys.exit(0)
+
+    console.print(f"\n[bold blue]Rolling back to: {identifier}[/bold blue]\n")
 
     try:
         rollback_points = RollbackManager.list_rollback_points()
@@ -354,8 +405,13 @@ def rollback(identifier):
 @click.option('--method', type=click.Choice(['auto', 'snapm', 'boom', 'lvm', 'btrfs']),
               default='auto', help='Rollback method to use')
 def create_snapshot(method):
-    """Create a manual system snapshot for rollback."""
+    """Create a manual system snapshot for rollback.
+
+    ⚠️  EXPERIMENTAL - Snapshots may be unreliable!
+    """
     console.print("[bold blue]Creating System Snapshot[/bold blue]\n")
+    console.print("[yellow]⚠️  Snapshot features are experimental and untested[/yellow]")
+    console.print("[yellow]Do not rely on snapshots as your only backup![/yellow]\n")
 
     prereqs = SystemDetector.check_prerequisites()
     if not prereqs.get('has_root'):
