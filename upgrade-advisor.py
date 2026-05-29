@@ -1,0 +1,200 @@
+#!/usr/bin/env python3
+"""Linux Upgrade Advisor CLI - Main entry point."""
+
+import sys
+import click
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich.markdown import Markdown
+
+from system_detector import SystemDetector
+from upgrade_paths import UpgradePathFinder
+from compatibility_checker import CompatibilityChecker
+from backup_advisor import BackupAdvisor
+from upgrade_executor import UpgradeExecutor
+
+console = Console()
+
+
+@click.group()
+@click.version_option(version='0.1.0')
+def cli():
+    """Linux Upgrade Advisor - Analyze and execute OS upgrades for Fedora and RHEL."""
+    pass
+
+
+@cli.command()
+def check():
+    """Check current system and display upgrade recommendations."""
+    console.print("[bold blue]Linux Upgrade Advisor[/bold blue]\n")
+
+    with console.status("[bold green]Detecting system..."):
+        system = SystemDetector.detect()
+        prereqs = SystemDetector.check_prerequisites()
+
+    console.print(Panel(f"[bold]{system}[/bold]\nArchitecture: {system.architecture}\nKernel: {system.kernel}",
+                       title="System Information", border_style="blue"))
+
+    table = Table(title="Prerequisites")
+    table.add_column("Check", style="cyan")
+    table.add_column("Status", style="magenta")
+
+    for check, status in prereqs.items():
+        status_str = "✓" if status else "✗"
+        color = "green" if status else "red"
+        table.add_row(check.replace('_', ' ').title(), f"[{color}]{status_str}[/{color}]")
+
+    console.print(table)
+
+    with console.status("[bold green]Finding upgrade paths..."):
+        paths = UpgradePathFinder.find_paths(system)
+
+    if paths:
+        for path in paths:
+            if path.supported:
+                console.print(f"\n[bold green]Available Upgrade:[/bold green] {system.os_name} {path.from_version} → {path.to_version}")
+                console.print(f"[bold]Method:[/bold] {path.method.upper()}")
+                console.print(f"[bold]Risk Level:[/bold] {path.risk_level.upper()}")
+                console.print("\n[bold]Notes:[/bold]")
+                for note in path.notes:
+                    console.print(f"  • {note}")
+            else:
+                console.print(f"\n[bold yellow]No supported upgrade path available[/bold yellow]")
+                for note in path.notes:
+                    console.print(f"  • {note}")
+    else:
+        console.print("\n[bold red]No upgrade paths found for this system[/bold red]")
+
+
+@cli.command()
+def preflight():
+    """Run pre-upgrade compatibility checks."""
+    console.print("[bold blue]Pre-flight Compatibility Checks[/bold blue]\n")
+
+    system = SystemDetector.detect()
+    console.print(f"System: {system}\n")
+
+    checker = CompatibilityChecker(system)
+
+    with console.status("[bold green]Running compatibility checks..."):
+        results = checker.run_all_checks()
+
+    critical_failures = []
+    warnings = []
+
+    for result in results:
+        if result.severity == 'critical' and not result.passed:
+            critical_failures.append(result)
+            console.print(f"[bold red]✗ CRITICAL:[/bold red] {result.name}")
+            console.print(f"  {result.message}")
+            if result.remediation:
+                console.print(f"  [italic]Fix: {result.remediation}[/italic]")
+        elif result.severity == 'warning' and not result.passed:
+            warnings.append(result)
+            console.print(f"[bold yellow]⚠ WARNING:[/bold yellow] {result.name}")
+            console.print(f"  {result.message}")
+            if result.remediation:
+                console.print(f"  [italic]Fix: {result.remediation}[/italic]")
+        else:
+            console.print(f"[green]✓[/green] {result.name}: {result.message}")
+
+    console.print()
+    if critical_failures:
+        console.print(f"[bold red]{len(critical_failures)} critical issue(s) must be resolved before upgrade[/bold red]")
+    elif warnings:
+        console.print(f"[bold yellow]{len(warnings)} warning(s) detected - review before upgrading[/bold yellow]")
+    else:
+        console.print("[bold green]All checks passed! System is ready for upgrade.[/bold green]")
+
+
+@cli.command()
+@click.option('--generate-script', is_flag=True, help='Generate backup script')
+def backup():
+    """Display backup recommendations."""
+    console.print("[bold blue]Backup Recommendations[/bold blue]\n")
+
+    system = SystemDetector.detect()
+    recommendations = BackupAdvisor.get_recommendations(system)
+
+    for priority in ['critical', 'recommended', 'optional']:
+        priority_recs = [r for r in recommendations if r.priority == priority]
+        if priority_recs:
+            console.print(f"\n[bold]{priority.upper()}[/bold]")
+            for rec in priority_recs:
+                console.print(f"\n  [cyan]Target:[/cyan] {rec.target}")
+                console.print(f"  [cyan]Method:[/cyan] {rec.method}")
+                console.print(f"  [cyan]Reason:[/cyan] {rec.reason}")
+                console.print(f"  [cyan]Size:[/cyan] {rec.estimated_size}")
+
+
+@cli.command()
+@click.option('--priority', type=click.Choice(['critical', 'recommended', 'optional']),
+              default='recommended', help='Backup priority level')
+def generate_backup_script(priority):
+    """Generate a backup script."""
+    system = SystemDetector.detect()
+    recommendations = BackupAdvisor.get_recommendations(system)
+    script = BackupAdvisor.generate_backup_script(recommendations, priority)
+
+    script_path = '/tmp/pre-upgrade-backup.sh'
+    with open(script_path, 'w') as f:
+        f.write(script)
+
+    console.print(f"[bold green]Backup script generated:[/bold green] {script_path}")
+    console.print(f"\nRun with: [cyan]sudo bash {script_path}[/cyan]")
+
+
+@cli.command()
+@click.option('--dry-run', is_flag=True, help='Show what would be done without executing')
+@click.confirmation_option(prompt='This will upgrade your system. Continue?')
+def upgrade(dry_run):
+    """Execute the system upgrade."""
+    system = SystemDetector.detect()
+    paths = UpgradePathFinder.find_paths(system)
+    recommended_path = UpgradePathFinder.recommend_best_path(paths)
+
+    if not recommended_path:
+        console.print("[bold red]No upgrade path available[/bold red]")
+        sys.exit(1)
+
+    console.print(f"[bold]Upgrade Plan:[/bold] {system.os_name} {recommended_path.from_version} → {recommended_path.to_version}")
+    console.print(f"[bold]Method:[/bold] {recommended_path.method}")
+
+    if dry_run:
+        console.print("\n[bold yellow]DRY RUN - No changes will be made[/bold yellow]")
+        executor = UpgradeExecutor(system, recommended_path)
+        prep = executor.prepare_upgrade()
+        console.print(f"\nMethod: {prep['method']}")
+        console.print(f"Ready: {prep['ready']}")
+        if prep['actions_needed']:
+            console.print("\nActions needed:")
+            for action in prep['actions_needed']:
+                console.print(f"  • {action}")
+        return
+
+    prereqs = SystemDetector.check_prerequisites()
+    if not prereqs.get('has_root'):
+        console.print("[bold red]Root privileges required for upgrade[/bold red]")
+        sys.exit(1)
+
+    executor = UpgradeExecutor(system, recommended_path)
+
+    if recommended_path.method == 'leapp':
+        result = executor.execute_leapp_upgrade()
+    else:
+        result = executor.execute_ansible_upgrade()
+
+    if result['success']:
+        console.print(f"\n[bold green]Upgrade {result['phase']} successful![/bold green]")
+        console.print(result['message'])
+    else:
+        console.print(f"\n[bold red]Upgrade {result['phase']} failed[/bold red]")
+        console.print(result['message'])
+        if 'output' in result:
+            console.print("\nDetails:")
+            console.print(result['output'])
+
+
+if __name__ == '__main__':
+    cli()
