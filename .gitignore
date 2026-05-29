@@ -10,3 +10,5 @@ ENV/
 .ansible/
 *.retry
 .DS_Store
+.env
+conversation-*.json

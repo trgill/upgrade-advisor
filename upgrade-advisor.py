@@ -13,6 +13,7 @@ from upgrade_paths import UpgradePathFinder
 from compatibility_checker import CompatibilityChecker
 from backup_advisor import BackupAdvisor
 from upgrade_executor import UpgradeExecutor
+from ai_assistant import UpgradeAssistant
 
 console = Console()
 
@@ -194,6 +195,73 @@ def upgrade(dry_run):
         if 'output' in result:
             console.print("\nDetails:")
             console.print(result['output'])
+
+
+@cli.command()
+@click.option('--export', help='Export conversation to file when done')
+def assistant(export):
+    """Interactive AI assistant to guide you through the upgrade process."""
+    console.print("[bold blue]🤖 AI Upgrade Assistant[/bold blue]\n")
+
+    try:
+        with console.status("[bold green]Initializing AI assistant..."):
+            ai = UpgradeAssistant()
+    except ValueError as e:
+        console.print(f"[bold red]Error:[/bold red] {e}")
+        console.print("\n[yellow]To use the AI assistant:[/yellow]")
+        console.print("1. Get an API key from https://console.anthropic.com/")
+        console.print("2. Create a .env file with: ANTHROPIC_API_KEY=your_key_here")
+        console.print("3. Or set environment variable: export ANTHROPIC_API_KEY=your_key")
+        sys.exit(1)
+
+    context = ai.get_context_summary()
+    console.print("[dim]AI assistant loaded with your system context[/dim]\n")
+
+    greeting = ai.start_guided_session()
+    console.print(f"[bold cyan]Assistant:[/bold cyan] {greeting}\n")
+
+    console.print("[dim]Type 'exit' or 'quit' to end the session[/dim]")
+    console.print("[dim]Type 'context' to see system information[/dim]")
+    console.print("[dim]Type 'reset' to start a new conversation[/dim]\n")
+
+    while True:
+        try:
+            user_input = console.input("[bold green]You:[/bold green] ").strip()
+
+            if not user_input:
+                continue
+
+            if user_input.lower() in ['exit', 'quit', 'bye']:
+                console.print("\n[cyan]Assistant: Goodbye! Stay safe with your upgrade.[/cyan]")
+                break
+
+            if user_input.lower() == 'context':
+                console.print("\n[bold]System Context:[/bold]")
+                console.print(context)
+                console.print()
+                continue
+
+            if user_input.lower() == 'reset':
+                ai.reset_conversation()
+                console.print("\n[yellow]Conversation reset. Starting fresh![/yellow]\n")
+                greeting = ai.start_guided_session()
+                console.print(f"[bold cyan]Assistant:[/bold cyan] {greeting}\n")
+                continue
+
+            with console.status("[bold green]Assistant is thinking..."):
+                response = ai.chat(user_input)
+
+            console.print(f"\n[bold cyan]Assistant:[/bold cyan] {response}\n")
+
+        except KeyboardInterrupt:
+            console.print("\n\n[yellow]Session interrupted[/yellow]")
+            break
+        except Exception as e:
+            console.print(f"\n[bold red]Error:[/bold red] {e}\n")
+
+    if export:
+        ai.export_conversation(export)
+        console.print(f"\n[green]Conversation exported to {export}[/green]")
 
 
 if __name__ == '__main__':
