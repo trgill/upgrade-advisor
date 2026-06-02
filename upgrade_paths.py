@@ -26,7 +26,10 @@ class UpgradePathFinder:
         '38': {'to': '39', 'risk': 'low'},
         '39': {'to': '40', 'risk': 'low'},
         '40': {'to': '41', 'risk': 'low'},
-        '41': {'to': '42', 'risk': 'medium'},  # Future version
+        '41': {'to': '42', 'risk': 'low'},
+        '42': {'to': '43', 'risk': 'low'},
+        '43': {'to': '44', 'risk': 'low'},
+        '44': {'to': '45', 'risk': 'medium'},  # Future version
     }
 
     RHEL_LEAPP_PATHS = {
