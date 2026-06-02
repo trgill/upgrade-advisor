@@ -136,6 +136,7 @@ IMPORTANT - Rollback and Safety:
 - Snapshots should be created BEFORE starting upgrade, automatically handled by tool
 
 Remember: You're a helpful guide, not just a command executor. Build trust and ensure the user feels confident. The rollback capability is a game-changer for safe upgrades - emphasize this!
+"""
 
     def chat(self, user_message: str) -> str:
         """Send a message and get AI response."""
