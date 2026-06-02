@@ -51,14 +51,30 @@ dnf install boom-boot snapm
 
 ### AI Assistant Setup (Optional)
 
-To use the AI-powered assistant feature:
+The AI assistant is an **optional feature** - all other functionality works without it.
 
-1. Get an API key from [Anthropic Console](https://console.anthropic.com/)
-2. Copy `.env.example` to `.env`
-3. Add your API key to `.env`:
+**For Red Hat Employees:**
+1. Red Hat has an existing Anthropic organization
+2. Request to join the Red Hat org at [Anthropic Console](https://console.anthropic.com/)
+3. Contact your team lead or IT for access/approval
+4. Once approved, create an API key in the Red Hat organization
+5. Copy `.env.example` to `.env` and add your key:
    ```
    ANTHROPIC_API_KEY=your_key_here
    ```
+
+**For External Users:**
+1. Create an Anthropic account at [Anthropic Console](https://console.anthropic.com/)
+2. Add a credit card (pay-per-use, ~$0.10-0.50 per upgrade session)
+3. Generate an API key
+4. Copy `.env.example` to `.env` and add your key:
+   ```
+   ANTHROPIC_API_KEY=your_key_here
+   ```
+
+**Cost:** Approximately $0.10-0.50 per upgrade session (10-20 questions)
+
+**Note:** The AI assistant is optional. All other features (check, preflight, rollback, upgrade) work without an API key.
 
 ## Usage
 
@@ -219,3 +235,28 @@ Contributions welcome! Areas for improvement:
 Apache License 2.0 - see [LICENSE](LICENSE) file for details
 
 Copyright Red Hat
+
+## Development Setup
+
+### Using Virtual Environment (Recommended)
+
+```bash
+# Create virtual environment
+python3 -m venv venv
+
+# Activate it
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# When done, deactivate
+deactivate
+```
+
+### Quick Start Script
+
+```bash
+# Use the helper script
+source activate-venv.sh
+```
