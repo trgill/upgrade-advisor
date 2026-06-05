@@ -39,6 +39,7 @@ The authors provide **NO WARRANTY** and accept **NO LIABILITY** for any damage, 
 - **Automatic Tool Selection**: Uses Leapp for RHEL/CentOS, Ansible for Fedora
 - **⚡ Automatic Rollback**: Creates snapshots with boom-boot/snapm for safe bailout
 - **🤖 AI Assistant**: Interactive AI guide powered by Claude that helps you through upgrades
+- **🧪 VM Test Framework**: Automated testing suite for validating upgrades across different configurations
 
 ## Installation
 
@@ -181,6 +182,13 @@ upgrade-advisor/
 ├── upgrade_executor.py         # Leapp/Ansible execution  
 ├── rollback_manager.py         # Boom/snapm rollback integration
 ├── ai_assistant.py            # AI-powered guide (Claude integration)
+├── vm_test_framework/          # VM-based automated testing
+│   ├── vm_manager.py           # VM lifecycle management
+│   ├── test_matrix.py          # Test configuration
+│   ├── test_runner.py          # Test orchestration
+│   ├── reporting.py            # Results and reports
+│   └── QUICKSTART.md           # Testing quick start
+├── run-vm-tests.sh            # Easy test runner script
 ├── requirements.txt            # Python dependencies
 ├── .env.example               # Configuration template
 └── ROLLBACK.md                # Rollback documentation
@@ -221,13 +229,36 @@ pytest
 - Custom kernels not supported
 - Limited to Fedora and RHEL-based distros
 
+## VM Test Framework
+
+For developers and QE, we provide an automated VM-based testing framework to validate upgrades across different configurations:
+
+```bash
+# Quick start - see vm_test_framework/QUICKSTART.md for details
+./run-vm-tests.sh setup
+./run-vm-tests.sh create-template rhel 9.3 /path/to/rhel.iso
+./run-vm-tests.sh smoke    # Quick validation
+./run-vm-tests.sh parallel # Full suite in parallel
+./run-vm-tests.sh report   # View results
+```
+
+**Features:**
+- Automated VM creation from templates (qemu/KVM)
+- Matrix testing across OS versions, profiles, and package sets
+- Parallel test execution
+- Post-upgrade validation framework
+- HTML reports and result tracking
+- Integration with upgrade-advisor tools
+
+See [vm_test_framework/QUICKSTART.md](vm_test_framework/QUICKSTART.md) for complete testing guide.
+
 ## Contributing
 
 Contributions welcome! Areas for improvement:
 - Additional distro support (Debian, Ubuntu)
 - Enhanced AI reasoning for edge cases
-- Post-upgrade validation
-- Rollback automation
+- Additional test scenarios in VM framework
+- Rollback automation improvements
 - Integration with monitoring tools
 
 ## License
