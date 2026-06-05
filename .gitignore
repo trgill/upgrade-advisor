@@ -5,7 +5,8 @@ __pycache__/
 .Python
 venv/
 ENV/
-.venv
+.venv/
+env/
 *.log
 .ansible/
 *.retry
