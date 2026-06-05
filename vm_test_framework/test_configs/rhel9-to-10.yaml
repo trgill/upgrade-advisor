@@ -1,0 +1,271 @@
+# RHEL 9 to RHEL 10 Upgrade Test Suite
+
+name: "RHEL 9 to RHEL 10 Comprehensive Upgrade Testing"
+
+base:
+  source_os: rhel
+  source_version: "9.3"
+  target_os: rhel
+  target_version: "10.0"
+
+# Test variants covering different scenarios
+variants:
+  # Smoke test - minimal install
+  - name: minimal-smoke-test
+    profile: minimal
+    package_set: minimal
+    storage_layouts:
+      - lvm_default
+    timeout_minutes: 60
+    tags:
+      - smoke
+      - minimal
+      - quick
+
+  # Web server scenario
+  - name: web-server-httpd
+    profile: server
+    package_set: web_server
+    packages:
+      - httpd
+      - mod_ssl
+      - php
+      - php-fpm
+    services:
+      - httpd
+      - php-fpm
+    pre_install_commands:
+      - systemctl enable httpd
+      - systemctl enable php-fpm
+      - echo "<html><body>Test Page</body></html>" > /var/www/html/index.html
+    storage_layouts:
+      - lvm_default
+      - lvm_separate_home
+    validations:
+      - name: httpd_service_active
+        type: service
+        target: httpd
+        expected: active
+        critical: true
+      - name: php_fpm_service_active
+        type: service
+        target: php-fpm
+        expected: active
+        critical: true
+      - name: httpd_config_valid
+        type: command
+        target: httpd -t
+        expected: "Syntax OK"
+        critical: true
+    timeout_minutes: 90
+    tags:
+      - server
+      - web
+      - httpd
+      - critical
+
+  # Database server scenario
+  - name: database-postgresql
+    profile: server
+    package_set: database
+    packages:
+      - postgresql-server
+      - postgresql-contrib
+    services:
+      - postgresql
+    pre_install_commands:
+      - postgresql-setup --initdb
+      - systemctl enable postgresql
+      - systemctl start postgresql
+      - sudo -u postgres createdb testdb
+    storage_layouts:
+      - lvm_default
+    validations:
+      - name: postgresql_service_active
+        type: service
+        target: postgresql
+        expected: active
+        critical: true
+      - name: testdb_exists
+        type: command
+        target: sudo -u postgres psql -lqt | grep testdb
+        expected: testdb
+        critical: true
+      - name: postgresql_config_valid
+        type: file
+        target: /var/lib/pgsql/data/postgresql.conf
+        expected: exists
+        critical: true
+    timeout_minutes: 90
+    tags:
+      - server
+      - database
+      - postgresql
+      - critical
+
+  # Development workstation
+  - name: development-workstation
+    profile: workstation
+    package_set: development
+    packages:
+      - gcc
+      - gcc-c++
+      - make
+      - git
+      - python3
+      - python3-devel
+      - python3-pip
+      - nodejs
+      - npm
+    storage_layouts:
+      - lvm_default
+    validations:
+      - name: gcc_installed
+        type: command
+        target: gcc --version
+        expected: success
+        critical: true
+      - name: python3_installed
+        type: command
+        target: python3 --version
+        expected: success
+        critical: true
+      - name: git_installed
+        type: command
+        target: git --version
+        expected: success
+        critical: true
+      - name: nodejs_installed
+        type: command
+        target: node --version
+        expected: success
+        critical: true
+    timeout_minutes: 90
+    tags:
+      - workstation
+      - development
+
+  # Container host scenario
+  - name: container-host-podman
+    profile: server
+    package_set: container_host
+    packages:
+      - podman
+      - buildah
+      - skopeo
+      - podman-docker
+    services:
+      - podman
+    pre_install_commands:
+      - podman pull registry.access.redhat.com/ubi9/ubi:latest
+      - podman run --name test-container -d ubi9/ubi sleep infinity
+    storage_layouts:
+      - lvm_default
+    validations:
+      - name: podman_installed
+        type: command
+        target: podman --version
+        expected: success
+        critical: true
+      - name: podman_images_exist
+        type: command
+        target: podman images | grep ubi9
+        expected: ubi9
+        critical: true
+      - name: container_running
+        type: command
+        target: podman ps -a | grep test-container
+        expected: test-container
+        critical: false
+    timeout_minutes: 90
+    tags:
+      - server
+      - containers
+      - podman
+
+  # Third-party repos scenario (testing compatibility)
+  - name: third-party-repos-epel
+    profile: server
+    package_set: third_party
+    packages:
+      - epel-release
+      - htop
+      - tmux
+      - ncdu
+    repos:
+      - epel
+    pre_install_commands:
+      - dnf install -y epel-release
+      - dnf install -y htop tmux ncdu
+    storage_layouts:
+      - lvm_default
+    validations:
+      - name: epel_repo_enabled
+        type: command
+        target: dnf repolist | grep epel
+        expected: epel
+        critical: false
+      - name: htop_installed
+        type: package
+        target: htop
+        expected: htop
+        critical: false
+    timeout_minutes: 90
+    tags:
+      - third-party
+      - epel
+      - compatibility
+
+  # Stress test - many packages
+  - name: full-server-install
+    profile: server
+    packages:
+      - "@server-product-environment"
+      - httpd
+      - nginx
+      - postgresql-server
+      - mariadb-server
+      - php
+      - python3
+      - java-11-openjdk
+      - podman
+      - git
+      - vim
+      - tmux
+    services:
+      - httpd
+      - postgresql
+      - mariadb
+    storage_layouts:
+      - lvm_default
+    timeout_minutes: 120
+    tags:
+      - stress
+      - full-install
+      - comprehensive
+
+# Global validation checks applied to all tests
+global_validations:
+  - name: system_boots
+    type: command
+    target: uptime
+    expected: success
+    critical: true
+
+  - name: selinux_status
+    type: command
+    target: getenforce
+    expected: Enforcing
+    critical: false
+
+  - name: network_connectivity
+    type: command
+    target: ping -c 1 8.8.8.8
+    expected: success
+    critical: true
+
+  - name: dnf_functional
+    type: command
+    target: dnf check
+    expected: success
+    critical: true
