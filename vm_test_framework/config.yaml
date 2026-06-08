@@ -1,0 +1,68 @@
+# VM Test Framework Configuration
+
+# Storage pool for VMs (templates and instances)
+storage_pool: /var/lib/libvirt/images/upgrade-test
+
+# ISO cache directory
+iso_cache: /var/lib/libvirt/images/isos
+
+# RHEL Subscription Configuration
+rhel_subscription:
+  # Method: activation_key, username_password, or cached_repos
+  method: activation_key
+
+  # For activation_key method
+  activation_key: "your-activation-key"
+  org_id: "your-org-id"
+
+  # For username_password method (Red Hat employee or developer subscription)
+  # username: "your-rhn-username"
+  # password: "your-rhn-password"
+
+  # For cached_repos method (offline testing)
+  # repo_cache: /var/cache/upgrade-test/repos
+
+# Network configuration for test VMs
+network:
+  # Use existing libvirt network
+  name: default
+
+  # Or create isolated test network
+  # name: upgrade-test-net
+  # type: nat
+  # bridge: virbr-test
+  # subnet: 192.168.100.0/24
+
+# Default VM resources
+defaults:
+  memory_mb: 2048
+  vcpus: 2
+  disk_size_gb: 20
+
+# Parallel execution limits
+parallel:
+  max_jobs: 3
+  timeout_minutes: 60
+
+# SSH configuration for VM access
+ssh:
+  username: root
+  password: testpassword  # TESTING ONLY - use keys in production
+  # key_file: ~/.ssh/id_rsa
+  timeout: 300
+
+# Logging
+logging:
+  level: INFO
+  file: vm_test_framework/logs/test_runner.log
+
+# Cleanup policy
+cleanup:
+  # Auto-cleanup VMs after test completion
+  auto_cleanup: true
+
+  # Keep VMs for failed tests for debugging
+  keep_failed: true
+
+  # Auto-cleanup old results (days)
+  results_retention_days: 30
